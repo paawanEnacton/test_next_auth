@@ -1,7 +1,10 @@
+import { useSession } from "next-auth/react"
 import Layout from "../components/layout"
 
 export default function ClientPage() {
+  const { data } = useSession()
   return (
+    console.log({data}),
     <Layout>
       <h1>Client Side Rendering</h1>
       <p>
