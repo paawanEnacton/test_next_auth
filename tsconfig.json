@@ -20,7 +20,8 @@
     "next-env.d.ts",
     "next-auth.d.ts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "pages/api/folders/folders.js"
   ],
   "exclude": ["node_modules"]
 }

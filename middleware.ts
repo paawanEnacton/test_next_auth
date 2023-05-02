@@ -1,17 +1,27 @@
-import { withAuth } from "next-auth/middleware"
+import { withAuth } from "next-auth/middleware";
+import prisma from "./prisma/index";
 
-// More on how NextAuth.js middleware works: https://next-auth.js.org/configuration/nextjs#middleware
 export default withAuth({
   callbacks: {
-    authorized({ req, token }) {
-      // `/admin` requires admin role
-      if (req.nextUrl.pathname === "/admin") {
-        return token?.userRole === "admin"
+    async authorized({ req, token }: any) {
+      console.log("token :>> ", typeof token.userId);
+      if (!token) {
+        return false;
       }
-      // `/me` only requires the user to be logged in
-      return !!token
+
+      const getUserData = await prisma.users.findFirst({
+        where: {
+          id: token.userId,
+          status: "active",
+        },
+      });
+
+      if (!getUserData) {
+        return false;
+      }
+      return true;
     },
   },
-})
+});
 
-export const config = { matcher: ["/admin", "/me"] }
+export const config = { matcher: ["/admin", "/me"] };
