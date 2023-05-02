@@ -70,6 +70,37 @@ const createFolder = async (req, res) => {
   }
 };
 
+const getAllFolders = async (req, res) => {
+  try {
+    let session = {
+      user: {
+        userId: 1001,
+      },
+    };
+    const getFolders = await prisma.folders.findMany({
+      where: {
+        user_id: session.user.userId,
+      },
+    });
+    if (!getFolders) {
+      return responseWithRestData(
+        res,
+        HTTP_STATUS.NOT_FOUND,
+        "No folder found",
+        null
+      );
+    }
+
+    return responseWithRestData(
+      res,
+      HTTP_STATUS.SUCCESS,
+      "Folders found successfully",
+      getFolders
+    );
+  } catch (error) {
+    return responseWithRestError(res, error);
+  }
+};
 export default async function handler(req, res) {
   if (req.method === "GET") {
     return await getAllFolders(req, res);
