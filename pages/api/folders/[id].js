@@ -7,28 +7,30 @@ import { HTTP_STATUS } from "../../../common/statusCode";
 import prisma from "../../../prisma/index";
 import * as yup from "yup";
 
-// import { authOptions } from "../auth/[...nextauth]";
-// import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]";
+import { getServerSession } from "next-auth/next";
 
-const updateFolder = async (req, res) => {
+const updateFolder = async (req, res, session) => {
   try {
-    const { folderId, name } = req.body;
+    const { name } = req.body;
+    const folderId = parseInt(req.query.id);
 
     const validateFoldersSchema = yup.object().shape({
       name: yup.string().required("Name is required"),
     });
     validateFoldersSchema.validateSync(req.body);
 
-    let session = {
-      user: {
-        userId: 1001,
-      },
-    };
+    // let session = {
+    //   user: {
+    //     userId: 1002,
+    //   },
+    // };
 
     // check if the folderId exists
     const checkFolderExistance = await prisma.folders.findFirst({
       where: {
         id: folderId,
+        user_id: session.user.userId,
         // name: { equals: name.toLowerCase() },
       },
     });
@@ -46,47 +48,53 @@ const updateFolder = async (req, res) => {
     const checkFolderExistanceOnUpdate = await prisma.folders.findFirst({
       where: {
         name: { equals: name.toLowerCase() },
+        user_id: session.user.userId,
         NOT: {
           id: folderId,
         },
       },
     });
 
-    console.log(
-      "checkFolderExistanceOnUpdate :>> ",
-      checkFolderExistanceOnUpdate
+    if (checkFolderExistanceOnUpdate) {
+      return responseWithRestData(
+        res,
+        HTTP_STATUS.ALREADY_EXISTS,
+        "Folder name already exists! Please try another name",
+        null
+      );
+    }
+
+    const updateData = await prisma.folders.update({
+      where: {
+        id: parseInt(folderId),
+      },
+      data: {
+        name: name.toLowerCase(),
+      },
+    });
+
+    if (!updateData) {
+      throw new Error("Could not updatefolder");
+    }
+
+    return responseWithRestData(
+      res,
+      HTTP_STATUS.CREATED,
+      "Folder name has been updated successfully",
+      updateData
     );
-
-    // const saveData = await prisma.folders.create({
-    //   data: {
-    //     name: name.toLowerCase(),
-    //     user_id: session.user.userId,
-    //     code: checkCode.code,
-    //   },
-    // });
-
-    // if (!saveData) {
-    //   throw new Error("Could not created folder");
-    // }
-
-    // return responseWithRestData(
-    //   res,
-    //   HTTP_STATUS.CREATED,
-    //   "Folder created successfully",
-    //   saveData
-    // );
   } catch (error) {
     return responseWithRestError(res, error);
   }
 };
 
-const getFolderById = async (req, res) => {
+const getFolderById = async (req, res, session) => {
   try {
-    let session = {
-      user: {
-        userId: 1001,
-      },
-    };
+    // let session = {
+    //   user: {
+    //     userId: 1001,
+    //   },
+    // };
     const getFolder = await prisma.folders.findFirst({
       where: {
         id: parseInt(req.query.id),
@@ -112,13 +120,13 @@ const getFolderById = async (req, res) => {
     return responseWithRestError(res, error);
   }
 };
-const deleteFolder = async (req, res) => {
+const deleteFolder = async (req, res, session) => {
   try {
-    let session = {
-      user: {
-        userId: 1001,
-      },
-    };
+    // let session = {
+    //   user: {
+    //     userId: 1001,
+    //   },
+    // };
     const getFolders = await prisma.folders.findFirst({
       where: {
         id: parseInt(req.query.id),
@@ -137,7 +145,6 @@ const deleteFolder = async (req, res) => {
     const deleteData = await prisma.folders.delete({
       where: {
         id: parseInt(req.query.id),
-        // user_id: session.user.userId,
       },
     });
 
@@ -156,13 +163,15 @@ const deleteFolder = async (req, res) => {
   }
 };
 export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+
   if (req.method === "GET") {
-    return await getFolderById(req, res);
+    return await getFolderById(req, res, session);
   }
   if (req.method === "POST") {
-    return await updateFolder(req, res);
+    return await updateFolder(req, res, session);
   }
   if (req.method === "DELETE") {
-    return await deleteFolder(req, res);
+    return await deleteFolder(req, res, session);
   }
 }

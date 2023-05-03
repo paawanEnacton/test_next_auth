@@ -7,10 +7,10 @@ import { HTTP_STATUS } from "../../../common/statusCode";
 import prisma from "../../../prisma/index";
 import * as yup from "yup";
 
-// import { authOptions } from "../auth/[...nextauth]";
-// import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]";
+import { getServerSession } from "next-auth/next";
 
-const createFolder = async (req, res) => {
+const createFolder = async (req, res, session) => {
   try {
     const { name } = req.body;
 
@@ -19,14 +19,15 @@ const createFolder = async (req, res) => {
     });
     validateFoldersSchema.validateSync(req.body);
 
-    let session = {
-      user: {
-        userId: 1001,
-      },
-    };
+    // let session = {
+    //   user: {
+    //     userId: 1001,
+    //   },
+    // };
 
     const checkDuplicateFolder = await prisma.folders.findFirst({
       where: {
+        user_id: session.user.userId,
         name: { equals: name.toLowerCase() },
       },
     });
@@ -56,7 +57,7 @@ const createFolder = async (req, res) => {
     });
 
     if (!saveData) {
-      throw new Error("Could not created folder");
+      throw new Error("Could not create folder");
     }
 
     return responseWithRestData(
@@ -70,13 +71,15 @@ const createFolder = async (req, res) => {
   }
 };
 
-const getAllFolders = async (req, res) => {
+const getAllFolders = async (req, res, session) => {
   try {
-    let session = {
-      user: {
-        userId: 1001,
-      },
-    };
+    console.log("session :>> ", session);
+
+    // let session = {
+    //   user: {
+    //     userId: 1001,
+    //   },
+    // };
     const getFolders = await prisma.folders.findMany({
       where: {
         user_id: session.user.userId,
@@ -102,10 +105,12 @@ const getAllFolders = async (req, res) => {
   }
 };
 export default async function handler(req, res) {
+  const session = await getServerSession(req, res, authOptions);
+
   if (req.method === "GET") {
-    return await getAllFolders(req, res);
+    return await getAllFolders(req, res, session);
   }
   if (req.method === "POST") {
-    return await createFolder(req, res);
+    return await createFolder(req, res, session);
   }
 }
